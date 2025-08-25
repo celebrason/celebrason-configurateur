@@ -4,14 +4,13 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function handler(event) {
   if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: 'Method Not Allowed' };
+    return { statusCode: 405, headers: { 'Content-Type': 'text/plain' }, body: 'Method Not Allowed' };
   }
 
   try {
     const { prospectEmail, summary } = JSON.parse(event.body || '{}');
-
     if (!prospectEmail || !summary?.text || !summary?.idDevis) {
-      return { statusCode: 400, body: 'Missing required fields' };
+      return { statusCode: 400, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ok:false, error:'Missing required fields' }) };
     }
 
     const toAdmin = process.env.DEFAULT_TO || 'contact@celebrason.fr';
@@ -30,23 +29,22 @@ export async function handler(event) {
       </div>
     `;
 
-    await resend.emails.send({ from, to: prospectEmail, subject, text: plain, html });
+    const rProspect = await resend.emails.send({ from, to: prospectEmail, subject, text: plain, html });
+    const rAdmin    = await resend.emails.send({ from, to: toAdmin,        subject: `[COPIE] ${subject}`, text: `Prospect: ${prospectEmail}\n\n${plain}`, html: `<div style="font-family:Arial,Helvetica,sans-serif;line-height:1.5;color:#111;"><p><strong>Prospect :</strong> ${escapeHtml(prospectEmail)}</p>${html}</div>` });
 
-    await resend.emails.send({
-      from,
-      to: toAdmin,
-      subject: `[COPIE] ${subject}`,
-      text: `Prospect: ${prospectEmail}
+    // Log des IDs dans Netlify (Functions → send-summary → Logs)
+    console.log('Resend IDs:', rProspect?.data?.id, rAdmin?.data?.id);
 
-${plain}`,
-      html: `<div style="font-family:Arial,Helvetica,sans-serif;line-height:1.5;color:#111;">
-              <p><strong>Prospect :</strong> ${escapeHtml(prospectEmail)}</p>${html}
-             </div>`
-    });
-
-    return { statusCode: 200, body: JSON.stringify({ ok: true }) };
+    return {
+      statusCode: 200,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ok: true,
+        ids: { prospect: rProspect?.data?.id || null, admin: rAdmin?.data?.id || null }
+      })
+    };
   } catch (err) {
-    console.error(err);
-    return { statusCode: 500, body: JSON.stringify({ ok: false, error: err?.message || 'Unknown error' }) };
+    console.error('Send error:', err?.message || err);
+    return { statusCode: 500, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ok:false, error: err?.message || 'Unknown error' }) };
   }
 }
