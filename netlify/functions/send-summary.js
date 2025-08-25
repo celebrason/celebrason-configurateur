@@ -14,7 +14,7 @@ export async function handler(event) {
     }
 
     const toAdmin = process.env.DEFAULT_TO || 'contact@celebrason.fr';
-    const from    = process.env.DEFAULT_FROM || 'devis@celebrason.fr';
+    const from    = process.env.DEFAULT_FROM || 'contact@celebrason.fr';
     const subject = `Résumé configurateur — ${summary.idDevis}`;
 
     const escapeHtml = (str = '') =>
