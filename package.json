@@ -1,0 +1,9 @@
+{
+  "name": "celebrason-configurateur",
+  "version": "1.0.0",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "resend": "^3.3.0"
+  }
+}
